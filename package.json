@@ -1,0 +1,14 @@
+{
+  "name": "pneu-net",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@gradio/client": "^2.0.0",
+    "formidable": "^3.0.0",
+    "node-fetch": "^3.3.1"
+  }
+}

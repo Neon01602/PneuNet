@@ -3,8 +3,8 @@ import formidable from "formidable";
 
 export const config = {
   api: {
-    bodyParser: false
-  }
+    bodyParser: false, // needed to handle file uploads
+  },
 };
 
 export default async function handler(req, res) {
@@ -17,11 +17,15 @@ export default async function handler(req, res) {
     if (err) return res.status(500).json({ error: err.message });
 
     try {
+      // Connect to the public Gradio Space
       const client = await Client.connect("Neo0110/my-pneumonia-model");
+
+      // Get uploaded file
       const file = files.image;
 
+      // Predict
       const result = await client.predict({
-        image: file.filepath
+        image: file.filepath, // pass local path to Gradio client
       });
 
       res.status(200).json({ result: result.data });

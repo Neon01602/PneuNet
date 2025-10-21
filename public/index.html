@@ -67,7 +67,7 @@
           predictionText.textContent = "Error during prediction!";
           probabilityText.textContent = "";
         } else {
-          const prediction = data.result[0]; // Label
+          const prediction = data.result[0]; // Label: Pneumonia / Normal
           const probability = (parseFloat(data.result[1]) * 100).toFixed(2);
           predictionText.textContent = `Result: ${prediction}`;
           probabilityText.textContent = `Confidence: ${probability}%`;

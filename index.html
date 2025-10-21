@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pneumonia Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 min-h-screen flex flex-col items-center justify-start py-10">
+
+    <!-- Header -->
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-blue-800">Pneumonia Detection</h1>
+        <p class="text-blue-700 mt-2">Upload a chest X-ray to check for pneumonia using AI</p>
+    </header>
+
+    <!-- Upload Card -->
+    <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+        <label class="block mb-4 text-gray-700 font-semibold">Upload Chest X-ray</label>
+        <input type="file" id="imageInput" accept="image/*" class="border border-gray-300 rounded p-2 w-full mb-4" />
+        <button id="predictBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded w-full">Predict</button>
+
+        <!-- Result -->
+        <div id="result" class="mt-6 text-center hidden">
+            <h2 class="text-xl font-bold mb-2">Prediction</h2>
+            <p id="predictionText" class="text-lg mb-2"></p>
+            <p id="probabilityText" class="text-gray-700"></p>
+        </div>
+    </div>
+
+    <!-- Optional Image Preview -->
+    <div id="previewContainer" class="mt-6 hidden">
+        <p class="text-gray-600 mb-2">Preview:</p>
+        <img id="previewImage" class="mx-auto rounded shadow-lg max-w-xs" />
+    </div>
+
+    <script type="module">
+        import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/gradio-client.esm.js";
+
+        const predictBtn = document.getElementById("predictBtn");
+        const imageInput = document.getElementById("imageInput");
+        const resultDiv = document.getElementById("result");
+        const predictionText = document.getElementById("predictionText");
+        const probabilityText = document.getElementById("probabilityText");
+        const previewContainer = document.getElementById("previewContainer");
+        const previewImage = document.getElementById("previewImage");
+
+        let selectedFile;
+
+        imageInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = () => {
+                    previewImage.src = reader.result;
+                    previewContainer.classList.remove("hidden");
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        });
+
+        predictBtn.addEventListener("click", async () => {
+            if (!selectedFile) {
+                alert("Please upload an image first!");
+                return;
+            }
+
+            predictionText.textContent = "Processing...";
+            probabilityText.textContent = "";
+            resultDiv.classList.remove("hidden");
+
+            try {
+                // Connect to your Gradio Space
+                const client = await Client.connect("Neo0110/my-pneumonia-model");
+
+                // Predict
+                const result = await client.predict({
+                    image: selectedFile
+                });
+
+                // Show results
+                const prediction = result.data[1]; // "Pneumonia" or "Normal"
+                const probability = (result.data[2] * 100).toFixed(2); // probability %
+
+                predictionText.textContent = `Result: ${prediction}`;
+                probabilityText.textContent = `Confidence: ${probability}%`;
+
+            } catch (err) {
+                predictionText.textContent = "Error during prediction!";
+                probabilityText.textContent = "";
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>

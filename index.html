@@ -35,62 +35,65 @@
     </div>
 
     <script type="module">
-        import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/gradio-client.esm.js";
+    import { Client } from "https://unpkg.com/@gradio/client/dist/gradio-client.esm.js";
 
-        const predictBtn = document.getElementById("predictBtn");
-        const imageInput = document.getElementById("imageInput");
-        const resultDiv = document.getElementById("result");
-        const predictionText = document.getElementById("predictionText");
-        const probabilityText = document.getElementById("probabilityText");
-        const previewContainer = document.getElementById("previewContainer");
-        const previewImage = document.getElementById("previewImage");
+    const predictBtn = document.getElementById("predictBtn");
+    const imageInput = document.getElementById("imageInput");
+    const resultDiv = document.getElementById("result");
+    const predictionText = document.getElementById("predictionText");
+    const probabilityText = document.getElementById("probabilityText");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewImage = document.getElementById("previewImage");
 
-        let selectedFile;
+    let selectedFile;
 
-        imageInput.addEventListener("change", (e) => {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = () => {
-                    previewImage.src = reader.result;
-                    previewContainer.classList.remove("hidden");
-                };
-                reader.readAsDataURL(selectedFile);
-            }
-        });
+    imageInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                previewImage.src = reader.result;
+                previewContainer.classList.remove("hidden");
+            };
+            reader.readAsDataURL(selectedFile);
+        }
+    });
 
-        predictBtn.addEventListener("click", async () => {
-            if (!selectedFile) {
-                alert("Please upload an image first!");
-                return;
-            }
+    predictBtn.addEventListener("click", async () => {
+        if (!selectedFile) {
+            alert("Please upload an image first!");
+            return;
+        }
 
-            predictionText.textContent = "Processing...";
+        predictionText.textContent = "Processing...";
+        probabilityText.textContent = "";
+        resultDiv.classList.remove("hidden");
+
+        try {
+            // Connect to your Gradio Space
+            const client = await Client.connect("Neo0110/my-pneumonia-model");
+
+            // Gradio expects File/Blob for image
+            const result = await client.predict({
+                image: selectedFile
+            });
+
+            // result.data[0] is Label (dictionary), result.data[1] is Probability (Textbox)
+            const predictionObj = result.data[0]; 
+            const prediction = Object.keys(predictionObj).reduce((a, b) => predictionObj[a] > predictionObj[b] ? a : b);
+            const probability = (predictionObj[prediction] * 100).toFixed(2);
+
+            predictionText.textContent = `Result: ${prediction}`;
+            probabilityText.textContent = `Confidence: ${probability}%`;
+
+        } catch (err) {
+            predictionText.textContent = "Error during prediction!";
             probabilityText.textContent = "";
-            resultDiv.classList.remove("hidden");
+            console.error(err);
+        }
+    });
+</script>
 
-            try {
-                // Connect to your Gradio Space
-                const client = await Client.connect("Neo0110/my-pneumonia-model");
-
-                // Predict
-                const result = await client.predict({
-                    image: selectedFile
-                });
-
-                // Show results
-                const prediction = result.data[1]; // "Pneumonia" or "Normal"
-                const probability = (result.data[2] * 100).toFixed(2); // probability %
-
-                predictionText.textContent = `Result: ${prediction}`;
-                probabilityText.textContent = `Confidence: ${probability}%`;
-
-            } catch (err) {
-                predictionText.textContent = "Error during prediction!";
-                probabilityText.textContent = "";
-                console.error(err);
-            }
-        });
-    </script>
 </body>
 </html>
+

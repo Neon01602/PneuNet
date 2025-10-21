@@ -1,86 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pneumonia Detection</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pneumonia Detection</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white shadow-lg rounded-2xl p-6 max-w-md w-full">
+    <h1 class="text-2xl font-bold text-center text-red-600 mb-4">Pneumonia Detection</h1>
+    <p class="text-gray-700 text-center mb-6">Upload a chest X-ray image to get prediction.</p>
 
-    <div class="bg-white shadow-lg rounded-2xl p-6 w-full max-w-md">
-        <h1 class="text-2xl font-bold text-blue-800 mb-4 text-center">Pneumonia Detection</h1>
-        <p class="text-gray-600 text-center mb-6">Upload a chest X-ray image and get a prediction</p>
+    <div class="flex flex-col items-center">
+      <input id="imageInput" type="file" accept="image/*" class="mb-4 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-red-100 file:text-red-700 hover:file:bg-red-200 cursor-pointer">
+      
+      <div id="previewContainer" class="hidden mb-4">
+        <img id="previewImage" class="rounded-lg max-h-60 shadow-md" />
+      </div>
 
-        <input type="file" id="imageInput" accept="image/*" class="w-full mb-4 p-2 border rounded-lg">
-        <div id="previewContainer" class="hidden mb-4">
-            <p class="text-gray-700 mb-2">Preview:</p>
-            <img id="previewImage" class="rounded-lg w-full object-contain border" />
-        </div>
-        <button id="predictBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition">Predict</button>
+      <button id="predictBtn" class="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors mb-4">Predict</button>
 
-        <div id="result" class="hidden mt-6 p-4 border rounded-lg bg-gray-50">
-            <p id="predictionText" class="font-semibold text-lg text-gray-800"></p>
-            <p id="probabilityText" class="text-gray-700"></p>
-        </div>
+      <div id="result" class="hidden text-center">
+        <p id="predictionText" class="text-xl font-semibold text-gray-800"></p>
+        <p id="probabilityText" class="text-gray-600"></p>
+      </div>
     </div>
+  </div>
 
-    <script type="module">
-        import { Client } from "https://unpkg.com/@gradio/client/dist/gradio-client.esm.js";
+  <script>
+    const imageInput = document.getElementById("imageInput");
+    const predictBtn = document.getElementById("predictBtn");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewImage = document.getElementById("previewImage");
+    const resultDiv = document.getElementById("result");
+    const predictionText = document.getElementById("predictionText");
+    const probabilityText = document.getElementById("probabilityText");
 
-        const predictBtn = document.getElementById("predictBtn");
-        const imageInput = document.getElementById("imageInput");
-        const resultDiv = document.getElementById("result");
-        const predictionText = document.getElementById("predictionText");
-        const probabilityText = document.getElementById("probabilityText");
-        const previewContainer = document.getElementById("previewContainer");
-        const previewImage = document.getElementById("previewImage");
+    let selectedFile;
 
-        let selectedFile;
+    imageInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => {
+          previewImage.src = reader.result;
+          previewContainer.classList.remove("hidden");
+        };
+        reader.readAsDataURL(selectedFile);
+      }
+    });
 
-        imageInput.addEventListener("change", (e) => {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = () => {
-                    previewImage.src = reader.result;
-                    previewContainer.classList.remove("hidden");
-                };
-                reader.readAsDataURL(selectedFile);
-            }
+    predictBtn.addEventListener("click", async () => {
+      if (!selectedFile) {
+        alert("Please upload an image first!");
+        return;
+      }
+
+      predictionText.textContent = "Processing...";
+      probabilityText.textContent = "";
+      resultDiv.classList.remove("hidden");
+
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+
+        const response = await fetch("https://hf.space/embed/Neo0110/my-pneumonia-model/api/predict/", {
+          method: "POST",
+          body: formData
         });
 
-        predictBtn.addEventListener("click", async () => {
-            if (!selectedFile) {
-                alert("Please upload an image first!");
-                return;
-            }
+        const result = await response.json();
 
-            predictionText.textContent = "Processing...";
-            probabilityText.textContent = "";
-            resultDiv.classList.remove("hidden");
+        // Gradio returns [Label, Textbox]
+        const prediction = result.data[0]; // "Pneumonia" or "Normal"
+        const probability = parseFloat(result.data[1] * 100).toFixed(2);
 
-            try {
-                // Connect to your public Gradio Space
-                const client = await Client.connect("Neo0110/my-pneumonia-model");
+        predictionText.textContent = `Result: ${prediction}`;
+        probabilityText.textContent = `Confidence: ${probability}%`;
 
-                // Predict
-                const result = await client.predict({ image: selectedFile });
-
-                // Gradio usually returns an array of [Label, Probability] depending on your output
-                const prediction = result.data[0]; // e.g., "Pneumonia" or "Normal"
-                const probability = (result.data[1] * 100).toFixed(2); // probability %
-
-                predictionText.textContent = `Result: ${prediction}`;
-                probabilityText.textContent = `Confidence: ${probability}%`;
-
-            } catch (err) {
-                predictionText.textContent = "Error during prediction!";
-                probabilityText.textContent = "";
-                console.error(err);
-            }
-        });
-    </script>
-
+      } catch (err) {
+        console.error(err);
+        predictionText.textContent = "Error during prediction!";
+        probabilityText.textContent = "";
+      }
+    });
+  </script>
 </body>
 </html>

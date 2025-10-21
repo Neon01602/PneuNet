@@ -1,10 +1,11 @@
-import { Client } from "@gradio/client";
 import formidable from "formidable";
+import fs from "fs";
+import { Client } from "@gradio/client";
 
 export const config = {
   api: {
-    bodyParser: false
-  }
+    bodyParser: false,
+  },
 };
 
 export default async function handler(req, res) {
@@ -19,10 +20,15 @@ export default async function handler(req, res) {
     try {
       const client = await Client.connect("Neo0110/my-pneumonia-model");
       const file = files.image;
-      
-      const result = await client.predict({
-        image: file.filepath,
-      });
+
+      // Read file as buffer
+      const fileBuffer = fs.readFileSync(file.filepath);
+
+      // Convert to Blob-like object
+      const blob = new Blob([fileBuffer]);
+
+      // Call Gradio Space
+      const result = await client.predict({ image: blob });
 
       res.status(200).json({ result: result.data });
     } catch (error) {
